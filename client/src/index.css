@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+    --color-neo-bg: #121212;
+    /* Simple neutral dark background */
+    --color-neo-card: #1e1e1e;
+    --color-neo-primary: #3b82f6;
+    --color-neo-accent: #06b6d4;
+    --color-neo-glow: rgba(6, 182, 212, 0.5);
+    --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+body {
+    @apply text-slate-200 antialiased selection:bg-cyan-500/30 selection:text-white font-sans;
+    background-color: var(--color-neo-bg);
+    background-attachment: fixed;
+    min-height: 100vh;
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+    @apply bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 shadow-2xl;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-nav {
+    @apply bg-slate-900/60 backdrop-blur-md border-b border-slate-700/50 shadow-lg;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.text-glow {
+    text-shadow: 0 0 15px var(--color-neo-glow);
+}
+
+.box-glow {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+    transition: all 0.3s ease;
+}
+
+.box-glow:hover {
+    box-shadow: 0 0 30px rgba(6, 182, 212, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Custom Webkit scrollbar for sleek look */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+}
