@@ -17,17 +17,17 @@ const StudentDashboard = () => {
 
     const loadData = React.useCallback(async () => {
         try {
-            const todayRes = await axios.get('http://localhost:5000/api/menu/today').catch(e => ({ data: null }));
+            const todayRes = await axios.get('/api/menu/today').catch(e => ({ data: null }));
             if (todayRes.data && !todayRes.data.message) {
                 setMenu(todayRes.data);
             } else {
                 setMenu(null);
             }
             
-            const weekRes = await axios.get('http://localhost:5000/api/menu/week').catch(e => ({ data: [] }));
+            const weekRes = await axios.get('/api/menu/week').catch(e => ({ data: [] }));
             setWeekMenu(weekRes.data || []);
 
-            const alertsRes = await axios.get('http://localhost:5000/api/alerts/my-alerts').catch(e => ({ data: [] }));
+            const alertsRes = await axios.get('/api/alerts/my-alerts').catch(e => ({ data: [] }));
             setAlerts(alertsRes.data || []);
         } catch (err) {
             console.error("Dashboard Load Error:", err);
@@ -41,7 +41,7 @@ const StudentDashboard = () => {
     const handleFeedbackSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/feedback', feedback);
+            await axios.post('/api/feedback', feedback);
             setMsg('Feedback submitted successfully!');
             setFeedback({ meal_type: 'Breakfast', rating: 5, comment: '' });
         } catch (err) {

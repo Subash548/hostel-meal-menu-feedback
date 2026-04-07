@@ -36,6 +36,7 @@ const connectDB = async () => {
 
         // Seed default menus if empty (useful for local memory DB)
         const Menu = require('./models/Menu');
+        const { runAllergyCheck } = require('./services/allergyEngine');
         const menuCount = await Menu.countDocuments();
         if (menuCount === 0) {
             console.log("Seeding initial menu data...");
@@ -98,7 +99,7 @@ const connectDB = async () => {
                 const dayOfWeek = d.getDay();
                 const dailyMenu = weeklyData[dayOfWeek];
 
-                await Menu.create({
+                const createdMenu = await Menu.create({
                     date: d,
                     day: dateString,
                     breakfast: dailyMenu.breakfast,
@@ -106,6 +107,8 @@ const connectDB = async () => {
                     snacks: dailyMenu.snacks,
                     dinner: dailyMenu.dinner
                 });
+                // Run allergy engine for each seeded menu so alerts are generated on startup
+                await runAllergyCheck(createdMenu);
             }
             console.log("Menu data seeded perfectly with dynamic day-to-day variations.");
         }

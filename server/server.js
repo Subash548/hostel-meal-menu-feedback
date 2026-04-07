@@ -15,6 +15,7 @@ app.use('/api/menu', require('./routes/menu'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/alerts', require('./routes/alerts'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/contact', require('./routes/contact'));
 
 app.get('/', (req, res) => {
     res.json({ message: "Hostel Meal Menu API is running" });
@@ -24,7 +25,12 @@ app.get('/', (req, res) => {
 const { startCronJobs } = require('./services/reminderCron');
 startCronJobs();
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-// Trigger nodemon restart
+// Start server locally if not in Vercel
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+// Export for Vercel Serverless
+module.exports = app;

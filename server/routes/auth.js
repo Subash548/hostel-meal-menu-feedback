@@ -2,6 +2,8 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Menu = require('../models/Menu');
+const { runAllergyCheck } = require('../services/allergyEngine');
 const router = express.Router();
 
 // Register Student
@@ -23,7 +25,7 @@ router.post('/register', async (req, res) => {
 
         const hash = bcrypt.hashSync(password, 10);
         
-        await User.create({
+        const newUser = await User.create({
             name,
             email,
             password: hash,
@@ -35,6 +37,16 @@ router.post('/register', async (req, res) => {
             customAllergies: customAllergies || [],
             notificationPrefs: notificationPrefs || { push: false, email: false, sms: false }
         });
+
+        // Run the allergy engine for all upcoming menus so this student gets alerts immediately
+        if ((allergies && allergies.length > 0) || (customAllergies && customAllergies.length > 0)) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const upcomingMenus = await Menu.find({ date: { $gte: today } });
+            for (const menu of upcomingMenus) {
+                await runAllergyCheck(menu);
+            }
+        }
 
         res.json({ message: "Student registered successfully" });
     } catch (err) {

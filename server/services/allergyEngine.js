@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Alert = require('../models/Alert');
+const { sendEmail } = require('./notifications');
 
 /**
  * Runs the allergy matching algorithm for a given menu and stores alerts.
@@ -75,11 +76,25 @@ const runAllergyCheck = async (menu) => {
         }
 
         if (alertsToInsert.length > 0) {
-            await Alert.insertMany(alertsToInsert);
+            const insertedAlerts = await Alert.insertMany(alertsToInsert);
             console.log(`Generated ${alertsToInsert.length} allergy alerts.`);
             
-            // Note: In real production, this is where we'd trigger push notifications/emails 
-            // for the newly inserted critical alerts.
+            // Dispatch notifications for the newly inserted critical alerts
+            for (const alert of alertsToInsert) {
+                if (alert.severity === 'Critical') {
+                    const studentToNotify = students.find(s => s._id.equals(alert.user));
+                    if (studentToNotify && studentToNotify.email) {
+                        const emailMessage = `HostelFresh Critical Allergy Alert:\n\n${alert.message}\n\nPlease take necessary precautions.`;
+                        
+                        await sendEmail(
+                            studentToNotify.email, 
+                            "CRITICAL Allergy Alert - HostelFresh", 
+                            emailMessage, 
+                            `<p><strong>HostelFresh Critical Allergy Alert:</strong></p><p>${alert.message}</p><p>Please take necessary precautions.</p>`
+                        );
+                    }
+                }
+            }
         }
     } catch (err) {
         console.error("Error in allergy engine:", err);

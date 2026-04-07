@@ -35,10 +35,10 @@ const AdminDashboard = () => {
         setError(null);
         try {
             if (view === 'menu') {
-                const res = await axios.get('http://localhost:5000/api/menu/week');
+                const res = await axios.get('/api/menu/week');
                 setMenus(res.data);
             } else if (view === 'feedback') {
-                const res = await axios.get('http://localhost:5000/api/feedback');
+                const res = await axios.get('/api/feedback');
                 setFeedbacks(res.data);
             }
         } catch (err) {
@@ -102,7 +102,7 @@ const AdminDashboard = () => {
                 }));
             });
 
-            await axios.post('http://localhost:5000/api/menu', payload);
+            await axios.post('/api/menu', payload);
             setNewMenu(initialMenuState);
             loadData();
             setMsg('Menu saved successfully');

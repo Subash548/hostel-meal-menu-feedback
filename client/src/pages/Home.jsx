@@ -9,7 +9,7 @@ const Home = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        axios.get('http://localhost:5000/api/menu/today')
+        axios.get('/api/menu/today')
             .then(res => {
                 setTodayMenu(res.data);
                 setLoading(false);
@@ -41,7 +41,8 @@ const Home = () => {
                         <Utensils className="text-neo-accent animate-float" size={24} />
                         <span className="text-glow">HostelFresh</span>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 items-center">
+                        <Link to="/contact" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors hidden md:block">Contact Support</Link>
                         <Link to="/login" className="px-5 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">Login</Link>
                         <Link to="/register" className="px-5 py-2 text-sm font-medium bg-gradient-to-r from-neo-primary to-neo-accent text-white hover:opacity-90 box-glow transition-all rounded-lg">Register</Link>
                     </div>
@@ -122,8 +123,9 @@ const Home = () => {
                 </div>
             </main>
 
-            <footer className="border-t border-slate-800/50 py-8 text-center text-slate-500 text-sm glass-nav mt-auto">
-                &copy; {new Date().getFullYear()} HostelFresh. Premium Dining Experience.
+            <footer className="border-t border-slate-800/50 py-8 px-6 flex flex-col md:flex-row justify-between items-center text-slate-500 text-sm glass-nav mt-auto max-w-6xl mx-auto w-full">
+                <span>&copy; {new Date().getFullYear()} HostelFresh. Premium Dining Experience.</span>
+                <Link to="/contact" className="mt-4 md:mt-0 hover:text-slate-300 transition-colors">Contact Administration</Link>
             </footer>
         </div>
     );

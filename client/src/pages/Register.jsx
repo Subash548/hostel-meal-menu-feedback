@@ -41,7 +41,7 @@ const Register = () => {
                 customAllergies
             };
 
-            await axios.post('http://localhost:5000/api/auth/register', payload);
+            await axios.post('/api/auth/register', payload);
             navigate('/login');
         } catch (err) {
             setError(err.response?.data?.error || "Registration failed");
