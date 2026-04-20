@@ -53,5 +53,56 @@ router.get('/', auth, async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
+// Generate AI Summary of Feedback (Admin Only)
+router.get('/ai-summary', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+        
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(400).json({ error: "GEMINI_API_KEY is not configured on the server." });
+        }
+
+        // Get the latest 50 feedback items
+        const feedbacks = await Feedback.find()
+            .populate('user', 'name')
+            .sort({ date: -1 })
+            .limit(50);
+            
+        if (feedbacks.length === 0) {
+            return res.json({ summary: "No feedback available to summarize yet." });
+        }
+
+        // Format for AI prompt
+        const feedbackText = feedbacks.map(f => 
+            `[${f.date}] ${f.meal_type} - Rating: ${f.rating}/5 - Comment: "${f.comment || 'No comment'}"`
+        ).join('\n');
+
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        const prompt = `You are an expert culinary analyst and hostel administrator. Analyze the following recent student feedback for the hostel mess meals.
+        
+        Feedback Data:
+        ${feedbackText}
+        
+        Provide a concise, professional summary highlighting:
+        1. Overall sentiment and average satisfaction.
+        2. Key compliments (what they loved).
+        3. Key complaints or recurring issues.
+        4. Actionable recommendations for the kitchen staff.
+        
+        Keep it under 150 words. Do not use markdown bolding in the plain text if not necessary, just return clean readable text.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+
+        res.json({ summary: response.text });
+    } catch (err) {
+        console.error("Error generating AI summary:", err);
+        res.status(500).json({ error: "AI generation failed: " + err.message });
+    }
+});
 
 module.exports = router;

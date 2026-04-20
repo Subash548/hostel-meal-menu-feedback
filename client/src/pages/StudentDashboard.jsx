@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -17,17 +17,17 @@ const StudentDashboard = () => {
 
     const loadData = React.useCallback(async () => {
         try {
-            const todayRes = await axios.get('/api/menu/today').catch(e => ({ data: null }));
+            const todayRes = await api.get('/api/menu/today').catch(e => ({ data: null }));
             if (todayRes.data && !todayRes.data.message) {
                 setMenu(todayRes.data);
             } else {
                 setMenu(null);
             }
             
-            const weekRes = await axios.get('/api/menu/week').catch(e => ({ data: [] }));
+            const weekRes = await api.get('/api/menu/week').catch(e => ({ data: [] }));
             setWeekMenu(weekRes.data || []);
 
-            const alertsRes = await axios.get('/api/alerts/my-alerts').catch(e => ({ data: [] }));
+            const alertsRes = await api.get('/api/alerts/my-alerts').catch(e => ({ data: [] }));
             setAlerts(alertsRes.data || []);
         } catch (err) {
             console.error("Dashboard Load Error:", err);
@@ -41,13 +41,14 @@ const StudentDashboard = () => {
     const handleFeedbackSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/feedback', feedback);
+            await api.post('/api/feedback', feedback);
             setMsg('Feedback submitted successfully!');
             setFeedback({ meal_type: 'Breakfast', rating: 5, comment: '' });
         } catch (err) {
             setMsg(err.response?.data?.error || 'Error submitting feedback');
         }
     };
+
 
     // Helper to get dish alert status
     const getDishAlert = (dishName, mealType, menuDate) => {
@@ -142,32 +143,23 @@ const StudentDashboard = () => {
                 </div>
             </header>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex gap-4 mb-8">
-                <button onClick={() => setView('today')} className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${view === 'today' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>Today's Menu</button>
-                <button onClick={() => setView('week')} className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${view === 'week' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>Upcoming</button>
-                <button onClick={() => setView('alerts')} className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${view === 'alerts' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>
+            {/* Navigation Tabs (Desktop & Mobile) */}
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide snap-x pt-2 px-1">
+                <button onClick={() => setView('today')} className={`snap-center whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all ${view === 'today' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_10px_rgba(6,182,212,0.3)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>Today's Menu</button>
+                <button onClick={() => setView('week')} className={`snap-center whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${view === 'week' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_10px_rgba(6,182,212,0.3)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>
+                    <Calendar size={16}/> Upcoming
+                </button>
+                <button onClick={() => setView('alerts')} className={`snap-center whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${view === 'alerts' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_10px_rgba(6,182,212,0.3)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>
                     <Bell size={16}/> Alerts 
                     {alerts.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{alerts.length}</span>}
                 </button>
-                <button onClick={() => setView('feedback')} className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${view === 'feedback' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>Feedback</button>
-            </div>
-
-            {/* Mobile Bottom Navigation */}
-            <div className="md:hidden fixed bottom-0 left-0 w-full glass-nav border-t border-slate-700/50 flex justify-around p-3 pb-safe z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-                <NavBtn active={view === 'today'} onClick={() => setView('today')} icon={<Utensils size={20} />} label="Today" />
-                <NavBtn active={view === 'week'} onClick={() => setView('week')} icon={<Calendar size={20} />} label="Upcoming" />
-                <NavBtn active={view === 'alerts'} onClick={() => setView('alerts')} icon={
-                    <div className="relative">
-                        <Bell size={20} />
-                        {alerts.length > 0 && <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>}
-                    </div>
-                } label="Alerts" />
-                <NavBtn active={view === 'feedback'} onClick={() => setView('feedback')} icon={<MessageSquare size={20} />} label="Feedback" />
+                <button onClick={() => setView('feedback')} className={`snap-center whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${view === 'feedback' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_10px_rgba(6,182,212,0.3)] border border-transparent' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>
+                    <MessageSquare size={16}/> Feedback
+                </button>
             </div>
 
             {/* Content Area */}
-            <div className="pb-24 md:pb-0 space-y-6 flex-grow">
+            <div className="pb-36 space-y-6 flex-grow">
 
                 {view === 'today' && (
                     <div className="glass-panel rounded-2xl p-6 md:p-8 animate-in mt-4">
@@ -325,7 +317,7 @@ const StudentDashboard = () => {
                                 <label className="block text-sm font-medium text-slate-300 mb-2 uppercase tracking-wider">Comments (Optional)</label>
                                 <textarea className="w-full p-4 border border-slate-600 rounded-xl h-36 focus:border-neo-accent focus:ring-1 focus:ring-neo-accent outline-none bg-slate-800/60 text-white transition-all placeholder-slate-500 resize-none" value={feedback.comment} onChange={(e) => setFeedback({ ...feedback, comment: e.target.value })} placeholder="Tell us what you loved or what needs improvement..." />
                             </div>
-                            <button type="submit" className="w-full bg-gradient-to-r from-neo-primary to-neo-accent text-white py-4 rounded-xl hover:opacity-90 box-glow transition-all font-bold text-lg mt-4 shadow-lg shadow-neo-accent/20">
+                            <button type="submit" className="w-full bg-gradient-to-r from-neo-primary to-neo-accent text-white py-4 rounded-xl hover:opacity-90 box-glow transition-all font-bold text-lg mt-4 shadow-lg shadow-neo-accent/20 active:scale-95 active:shadow-inner">
                                 Submit Feedback
                             </button>
                         </form>
@@ -337,13 +329,6 @@ const StudentDashboard = () => {
 };
 
 // UI helpers
-const NavBtn = ({ active, onClick, icon, label }) => (
-    <button onClick={onClick} className={`flex flex-col items-center gap-1.5 transition-all duration-300 px-4 py-2 rounded-xl ${active ? 'text-neo-accent font-bold bg-neo-accent/10 shadow-[inset_0_-2px_0_rgba(6,182,212,1)]' : 'text-slate-400 font-medium hover:text-slate-200'}`}>
-        <div className={`${active ? 'animate-bounce-slight' : ''}`}>{icon}</div>
-        <span className="text-[10px] uppercase tracking-wider">{label}</span>
-    </button>
-);
-
 const WeekItem = ({ label, items, time, icon }) => (
     <div className="flex gap-4 items-start py-3 border-b border-slate-700/50 last:border-0 group">
         <div className="min-w-[5rem] flex flex-col items-center justify-center p-2 rounded-lg bg-slate-800/50 border border-slate-700 mt-1">

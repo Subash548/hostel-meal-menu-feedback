@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
-import { LogOut, Plus, Trash2, PieChart, Star, Settings, Home as HomeIcon, AlertTriangle } from 'lucide-react';
+import { LogOut, Plus, Trash2, PieChart, Star, Settings, Home as HomeIcon, AlertTriangle, Sparkles } from 'lucide-react';
 
 const ALLERGY_OPTIONS = ['Nuts', 'Gluten', 'Dairy', 'Egg', 'Soy', 'Seafood', 'Spices', 'Sulfites'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'snacks', 'dinner'];
@@ -14,6 +14,8 @@ const AdminDashboard = () => {
     const [menus, setMenus] = useState([]);
     const [feedbacks, setFeedbacks] = useState([]);
     const [view, setView] = useState('menu'); // 'menu', 'feedback', 'allergy_stats'
+    const [aiSummary, setAiSummary] = useState(null);
+    const [aiLoading, setAiLoading] = useState(false);
     
     // Complex menu state for adding/editing dishes with allergens
     const initialMenuState = {
@@ -35,11 +37,12 @@ const AdminDashboard = () => {
         setError(null);
         try {
             if (view === 'menu') {
-                const res = await axios.get('/api/menu/week');
+                const res = await api.get('/api/menu/week');
                 setMenus(res.data);
             } else if (view === 'feedback') {
-                const res = await axios.get('/api/feedback');
+                const res = await api.get('/api/feedback');
                 setFeedbacks(res.data);
+                setAiSummary(null); // Reset summary when viewing fresh feedback
             }
         } catch (err) {
             console.error(err);
@@ -52,6 +55,20 @@ const AdminDashboard = () => {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    const handleGenerateAiSummary = async () => {
+        if (feedbacks.length === 0) return;
+        setAiLoading(true);
+        try {
+            const res = await api.get('/api/feedback/ai-summary');
+            setAiSummary(res.data.summary);
+        } catch (err) {
+            console.error("Failed to generate AI summary", err);
+            setAiSummary(`Error: ${err.response?.data?.error || err.message}`);
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     const handleAddDish = (mealType) => {
         setNewMenu({
@@ -102,7 +119,7 @@ const AdminDashboard = () => {
                 }));
             });
 
-            await axios.post('/api/menu', payload);
+            await api.post('/api/menu', payload);
             setNewMenu(initialMenuState);
             loadData();
             setMsg('Menu saved successfully');
@@ -140,7 +157,7 @@ const AdminDashboard = () => {
     const handleDeleteMenu = async (id) => {
         if (!window.confirm("Are you sure you want to delete this menu?")) return;
         try {
-            await axios.delete(`http://localhost:5000/api/menu/${id}`);
+            await api.delete(`/api/menu/${id}`);
             loadData();
         } catch (err) {
             console.error(err);
@@ -332,12 +349,36 @@ const AdminDashboard = () => {
                             <span className="bg-yellow-400 w-2 h-8 rounded-full"></span>
                             Student Feedback
                         </h2>
-                        <div className="flex gap-2">
-                            <span className="bg-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-full border border-slate-700 font-medium">
+                        <div className="flex gap-2 items-center">
+                            {feedbacks.length > 0 && (
+                                <Button 
+                                    onClick={handleGenerateAiSummary} 
+                                    disabled={aiLoading}
+                                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-neo-accent text-white font-bold text-sm"
+                                >
+                                    {aiLoading ? (
+                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                    ) : (
+                                        <Sparkles size={16} />
+                                    )}
+                                    Generate AI Summary
+                                </Button>
+                            )}
+                            <span className="bg-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-full border border-slate-700 font-medium h-fit">
                                 Total: {feedbacks.length}
                             </span>
                         </div>
                     </div>
+
+                    {aiSummary && (
+                        <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-purple-900/40 to-slate-900 border border-purple-500/30 relative overflow-hidden shadow-[0_0_30px_rgba(168,85,247,0.1)]">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-[50px] rounded-full pointer-events-none"></div>
+                            <h3 className="font-bold text-purple-400 mb-3 flex items-center gap-2">
+                                <Sparkles size={18} /> AI Insight Summary
+                            </h3>
+                            <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+                        </div>
+                    )}
 
                     {feedbacks.length > 0 ? (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { Utensils, ArrowRight } from 'lucide-react';
 
 const Home = () => {
@@ -9,16 +9,26 @@ const Home = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        axios.get('/api/menu/today')
+        // Debugging for mobile: verify IP
+        console.log("Current API URL:", api.defaults.baseURL);
+        
+        api.get('/api/menu/today')
             .then(res => {
                 setTodayMenu(res.data);
                 setLoading(false);
             })
             .catch(err => {
+                const now = new Date().toLocaleTimeString();
+                const errorMsg = `[${now}] API Error: ${err.message} | URL: ${api.defaults.baseURL}`;
+                console.error(errorMsg);
+                if (window.Capacitor) {
+                    alert(errorMsg);
+                }
                 setError("Could not load menu. Please check your connection.");
                 setLoading(false);
             });
     }, []);
+
 
     const getCurrentMeal = () => {
         const hour = new Date().getHours();
@@ -41,10 +51,10 @@ const Home = () => {
                         <Utensils className="text-neo-accent animate-float" size={24} />
                         <span className="text-glow">HostelFresh</span>
                     </div>
-                    <div className="flex gap-4 items-center">
-                        <Link to="/contact" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors hidden md:block">Contact Support</Link>
-                        <Link to="/login" className="px-5 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">Login</Link>
-                        <Link to="/register" className="px-5 py-2 text-sm font-medium bg-gradient-to-r from-neo-primary to-neo-accent text-white hover:opacity-90 box-glow transition-all rounded-lg">Register</Link>
+                    <div className="flex gap-1 sm:gap-3 items-center">
+                        <Link to="/contact" className="hidden md:block px-3 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">Contact Support</Link>
+                        <Link to="/login" className="px-3 sm:px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">Login</Link>
+                        <Link to="/register" className="px-4 sm:px-5 py-2 text-sm font-medium bg-gradient-to-r from-neo-primary to-neo-accent text-white hover:opacity-90 box-glow transition-all rounded-lg whitespace-nowrap">Register</Link>
                     </div>
                 </div>
             </nav>

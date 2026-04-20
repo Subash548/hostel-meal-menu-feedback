@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { Utensils } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 const ALLERGY_OPTIONS = ['Nuts', 'Gluten', 'Dairy', 'Egg', 'Soy', 'Seafood', 'Spices', 'Sulfites'];
 
@@ -41,9 +42,12 @@ const Register = () => {
                 customAllergies
             };
 
-            await axios.post('/api/auth/register', payload);
+            await api.post('/api/auth/register', payload);
+            await Haptics.impact({ style: ImpactStyle.Light });
             navigate('/login');
+
         } catch (err) {
+            await Haptics.vibrate();
             setError(err.response?.data?.error || "Registration failed");
         }
     };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
@@ -20,7 +20,7 @@ const AdminStats = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await axios.get('/api/admin/stats');
+                const res = await api.get('/api/admin/stats');
                 setStats(res.data);
             } catch (err) {
                 console.error(err);
@@ -31,6 +31,7 @@ const AdminStats = () => {
         };
         fetchStats();
     }, []);
+
 
     const generatePDF = () => {
         if (!stats) return;

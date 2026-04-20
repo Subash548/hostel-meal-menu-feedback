@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hostel Meal Menu</string>
+    <string name="title_activity_main">Hostel Meal Menu</string>
+    <string name="package_name">com.subash.hostelmenu</string>
+    <string name="custom_url_scheme">com.subash.hostelmenu</string>
+</resources>

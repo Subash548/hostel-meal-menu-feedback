@@ -1,0 +1,8 @@
+{
+  "appId": "com.subash.hostelmenu",
+  "appName": "Hostel Meal Menu",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true
+  }
+}

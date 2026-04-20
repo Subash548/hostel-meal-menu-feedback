@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { Utensils } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 const Login = () => {
     const location = useLocation();
@@ -19,7 +20,8 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post('/api/auth/login', { email, password });
+            const res = await api.post('/api/auth/login', { email, password });
+
 
             // Optional: verify if they selected the right type of login based on their role
             if (res.data.user.role !== loginType) {
@@ -28,9 +30,14 @@ const Login = () => {
             }
 
             login(res.data.token, res.data.user);
+            await Haptics.impact({ style: ImpactStyle.Light });
             navigate(res.data.user.role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
         } catch (err) {
-            setError(err.response?.data?.error || "Login failed");
+            await Haptics.vibrate();
+            const errorMsg = err.response?.data?.details 
+                ? `${err.response.data.error}: ${err.response.data.details}`
+                : (err.response?.data?.error || "Login failed");
+            setError(errorMsg);
         }
     };
 

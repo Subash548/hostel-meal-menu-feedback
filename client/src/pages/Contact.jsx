@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { Mail, User, MessageSquare, Send, ArrowLeft, Building2 } from 'lucide-react';
 import Button from '../components/ui/Button';
@@ -24,7 +24,7 @@ const Contact = () => {
         setErrorMessage('');
 
         try {
-            await axios.post('/api/contact', formData);
+            await api.post('/api/contact', formData);
             setStatus('success');
             setFormData({ name: '', email: '', message: '' }); // Reset form
         } catch (err) {
@@ -32,6 +32,7 @@ const Contact = () => {
             setErrorMessage(err.response?.data?.error || 'Failed to send message. Please try again.');
         }
     };
+
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[#0A0F1C]">
