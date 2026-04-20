@@ -97,6 +97,54 @@ router.delete('/:id', auth, async (req, res) => {
     }
 });
 
+// AI Auto-Detect Ingredients & Allergens for a Dish (Admin Only)
+router.post('/ai-detect-dish', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(400).json({ error: "GEMINI_API_KEY is not configured." });
+        }
+
+        const { dishName } = req.body;
+        if (!dishName || dishName.trim().length < 2) {
+            return res.status(400).json({ error: "Please provide a valid dish name." });
+        }
+
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+        const prompt = `You are an expert Indian food nutritionist. For the dish "${dishName.trim()}", provide:
+1. A list of the main common ingredients (4-8 ingredients)
+2. Any allergens from this list that apply: Nuts, Gluten, Dairy, Egg, Soy, Seafood, Spices, Sulfites
+
+Return ONLY valid JSON (no markdown, no explanation) in this exact format:
+{"ingredients": ["ingredient1", "ingredient2"], "allergenTags": ["Dairy", "Gluten"]}
+
+If you don't recognize the dish, return: {"ingredients": [], "allergenTags": [], "unknown": true}`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+
+        let rawText = response.text.trim();
+        rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+        let result;
+        try {
+            result = JSON.parse(rawText);
+        } catch (parseErr) {
+            return res.status(500).json({ error: "AI returned malformed data." });
+        }
+
+        res.json(result);
+    } catch (err) {
+        console.error("Error detecting dish:", err);
+        res.status(500).json({ error: "AI detection failed: " + err.message });
+    }
+});
+
 // AI Weekly Menu Generator (Admin Only)
 router.post('/ai-generate', auth, async (req, res) => {
     try {

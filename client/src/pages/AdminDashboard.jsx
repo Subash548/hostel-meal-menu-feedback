@@ -3,7 +3,7 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
-import { LogOut, Plus, Trash2, PieChart, Star, Settings, Home as HomeIcon, AlertTriangle, Sparkles } from 'lucide-react';
+import { LogOut, Plus, Trash2, PieChart, Star, Settings, Home as HomeIcon, AlertTriangle, Sparkles, Wand2 } from 'lucide-react';
 
 const ALLERGY_OPTIONS = ['Nuts', 'Gluten', 'Dairy', 'Egg', 'Soy', 'Seafood', 'Spices', 'Sulfites'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'snacks', 'dinner'];
@@ -18,6 +18,7 @@ const AdminDashboard = () => {
     const [aiLoading, setAiLoading] = useState(false);
     const [aiMenuLoading, setAiMenuLoading] = useState(false);
     const [aiGeneratedMenus, setAiGeneratedMenus] = useState(null);
+    const [detectingDish, setDetectingDish] = useState(null); // track as 'mealType-index'
     const [savingDayIdx, setSavingDayIdx] = useState(null);
     
     // Complex menu state for adding/editing dishes with allergens
@@ -214,6 +215,34 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleAiDetectDish = async (mealType, index) => {
+        const dish = newMenu[mealType][index];
+        if (!dish.name || dish.name.trim().length < 2) return;
+        const key = `${mealType}-${index}`;
+        setDetectingDish(key);
+        try {
+            const res = await api.post('/api/menu/ai-detect-dish', { dishName: dish.name });
+            if (res.data && !res.data.unknown) {
+                const updatedMeals = [...newMenu[mealType]];
+                updatedMeals[index] = {
+                    ...updatedMeals[index],
+                    ingredients: res.data.ingredients.join(', '),
+                    allergenTags: res.data.allergenTags || []
+                };
+                setNewMenu({ ...newMenu, [mealType]: updatedMeals });
+            } else {
+                setMsg('AI could not recognize this dish. Try a more specific name.');
+                setTimeout(() => setMsg(''), 3000);
+            }
+        } catch (err) {
+            console.error('AI dish detect error:', err);
+            setMsg(`AI Error: ${err.response?.data?.error || err.message}`);
+            setTimeout(() => setMsg(''), 3000);
+        } finally {
+            setDetectingDish(null);
+        }
+    };
+
     // UI Helper for rendering dishes inside the form
     const renderDishInputs = (mealType) => (
         <div className="mb-6 p-4 rounded-xl border border-slate-700 bg-slate-800/20">
@@ -235,11 +264,27 @@ const AdminDashboard = () => {
                             <Trash2 size={16} />
                         </button>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                            <input 
-                                type="text" placeholder="Dish Name (e.g., Paneer Tikka)" className="w-full p-2.5 border border-slate-600 rounded-lg text-sm bg-slate-800 text-white focus:border-neo-primary outline-none"
-                                value={dish.name} onChange={(e) => handleDishChange(mealType, i, 'name', e.target.value)} required 
-                            />
+                        <div className="mb-3 space-y-2">
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" placeholder="Dish Name (e.g., Paneer Tikka)" className="flex-grow p-2.5 border border-slate-600 rounded-lg text-sm bg-slate-800 text-white focus:border-neo-primary outline-none"
+                                    value={dish.name} onChange={(e) => handleDishChange(mealType, i, 'name', e.target.value)} required 
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => handleAiDetectDish(mealType, i)}
+                                    disabled={detectingDish === `${mealType}-${i}` || !dish.name || dish.name.trim().length < 2}
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all disabled:opacity-40 bg-gradient-to-r from-purple-600 to-neo-accent text-white hover:shadow-[0_0_12px_rgba(168,85,247,0.4)] active:scale-95"
+                                    title="AI auto-fill ingredients & allergens"
+                                >
+                                    {detectingDish === `${mealType}-${i}` ? (
+                                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                    ) : (
+                                        <Wand2 size={14} />
+                                    )}
+                                    AI Fill
+                                </button>
+                            </div>
                             <input 
                                 type="text" placeholder="Ingredients (comma separated)" className="w-full p-2.5 border border-slate-600 rounded-lg text-sm bg-slate-800 text-white focus:border-neo-primary outline-none"
                                 value={dish.ingredients} onChange={(e) => handleDishChange(mealType, i, 'ingredients', e.target.value)} 
