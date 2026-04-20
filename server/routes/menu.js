@@ -97,4 +97,99 @@ router.delete('/:id', auth, async (req, res) => {
     }
 });
 
+// AI Weekly Menu Generator (Admin Only)
+router.post('/ai-generate', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(400).json({ error: "GEMINI_API_KEY is not configured on the server." });
+        }
+
+        // Fetch last 14 days of menus to understand what was recently served
+        const twoWeeksAgo = new Date();
+        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+        const recentMenus = await Menu.find({}).sort({ date: -1 }).limit(14);
+
+        // Format past menus for context
+        const pastMenuText = recentMenus.length > 0
+            ? recentMenus.map(m => {
+                const summarize = (dishes) => dishes?.map(d => d.name).join(', ') || 'None';
+                return `Date: ${m.day} | Breakfast: ${summarize(m.breakfast)} | Lunch: ${summarize(m.lunch)} | Snacks: ${summarize(m.snacks)} | Dinner: ${summarize(m.dinner)}`;
+              }).join('\n')
+            : 'No recent menu history available.';
+
+        // Calculate the next 7 days
+        const next7Days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() + i);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            next7Days.push({
+                dateString: `${year}-${month}-${day}`,
+                dayName: d.toLocaleDateString('en-US', { weekday: 'long' })
+            });
+        }
+
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+        const prompt = `You are an expert hostel mess nutritionist and menu planner for a student hostel in India.
+
+Your task is to generate a 7-day meal plan for the following dates: ${next7Days.map(d => d.dateString).join(', ')}.
+
+RECENT MENU HISTORY (avoid repeating these dishes too soon):
+${pastMenuText}
+
+REQUIREMENTS:
+- Each day must have: breakfast, lunch, snacks, dinner
+- Each meal must have 2-4 dishes
+- Balance nutrition: include protein, carbs, vegetables daily
+- Include popular Indian hostel meals (e.g., Idli, Poha, Dal Rice, Roti Sabzi, Pulao, etc.)
+- Avoid repeating the same dish within the 7-day plan
+- Snacks should be light (e.g., Tea & Biscuits, Samosa, Peanuts)
+- For EACH dish, list 2-4 common ingredients
+
+Return ONLY a valid JSON array (no markdown, no explanation), in this EXACT format:
+[
+  {
+    "day": "YYYY-MM-DD",
+    "breakfast": [{"name": "Dish Name", "ingredients": ["ing1", "ing2"], "allergenTags": []}],
+    "lunch": [{"name": "Dish Name", "ingredients": ["ing1", "ing2"], "allergenTags": []}],
+    "snacks": [{"name": "Dish Name", "ingredients": ["ing1", "ing2"], "allergenTags": []}],
+    "dinner": [{"name": "Dish Name", "ingredients": ["ing1", "ing2"], "allergenTags": []}]
+  }
+]
+
+The dates must match exactly: ${next7Days.map(d => `"${d.dateString}"`).join(', ')}
+Return nothing except the JSON array.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+
+        // Clean and parse the JSON
+        let rawText = response.text.trim();
+        // Strip markdown code blocks if present
+        rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+        let generatedMenus;
+        try {
+            generatedMenus = JSON.parse(rawText);
+        } catch (parseErr) {
+            console.error("AI returned invalid JSON:", rawText);
+            return res.status(500).json({ error: "AI returned malformed data. Please try again." });
+        }
+
+        res.json({ menus: generatedMenus });
+    } catch (err) {
+        console.error("Error generating AI menu:", err);
+        res.status(500).json({ error: "AI generation failed: " + err.message });
+    }
+});
+
 module.exports = router;

@@ -16,6 +16,9 @@ const AdminDashboard = () => {
     const [view, setView] = useState('menu'); // 'menu', 'feedback', 'allergy_stats'
     const [aiSummary, setAiSummary] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
+    const [aiMenuLoading, setAiMenuLoading] = useState(false);
+    const [aiGeneratedMenus, setAiGeneratedMenus] = useState(null);
+    const [savingDayIdx, setSavingDayIdx] = useState(null);
     
     // Complex menu state for adding/editing dishes with allergens
     const initialMenuState = {
@@ -55,6 +58,53 @@ const AdminDashboard = () => {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    const handleGenerateAiMenu = async () => {
+        setAiMenuLoading(true);
+        setAiGeneratedMenus(null);
+        try {
+            const res = await api.post('/api/menu/ai-generate');
+            setAiGeneratedMenus(res.data.menus);
+        } catch (err) {
+            console.error('AI menu generation failed', err);
+            setMsg(`AI Error: ${err.response?.data?.error || err.message}`);
+        } finally {
+            setAiMenuLoading(false);
+        }
+    };
+
+    const handleSaveAiDay = async (dayMenu, idx) => {
+        setSavingDayIdx(idx);
+        try {
+            await api.post('/api/menu', {
+                day: dayMenu.day,
+                date: dayMenu.day,
+                breakfast: dayMenu.breakfast,
+                lunch: dayMenu.lunch,
+                snacks: dayMenu.snacks,
+                dinner: dayMenu.dinner,
+            });
+            // Remove saved day from preview
+            setAiGeneratedMenus(prev => prev.filter((_, i) => i !== idx));
+            setMsg(`Menu for ${dayMenu.day} saved!`);
+            setTimeout(() => setMsg(''), 3000);
+            loadData();
+        } catch (err) {
+            setMsg(`Save failed: ${err.response?.data?.error || err.message}`);
+        } finally {
+            setSavingDayIdx(null);
+        }
+    };
+
+    const handleSaveAllAiMenus = async () => {
+        if (!aiGeneratedMenus) return;
+        for (let i = 0; i < aiGeneratedMenus.length; i++) {
+            await handleSaveAiDay(aiGeneratedMenus[i], i);
+        }
+        setAiGeneratedMenus(null);
+        setMsg('All 7 days saved successfully!');
+        setTimeout(() => setMsg(''), 3000);
+    };
 
     const handleGenerateAiSummary = async () => {
         if (feedbacks.length === 0) return;
@@ -263,11 +313,80 @@ const AdminDashboard = () => {
                 </div>
             </header>
 
-            <div className="flex gap-4 mb-8">
+            <div className="flex flex-wrap gap-3 mb-8">
                 <button onClick={() => setView('menu')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'menu' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] border border-transparent scale-105' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>Manage Menus</button>
                 <button onClick={() => setView('feedback')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'feedback' ? 'bg-gradient-to-r from-neo-primary to-neo-accent text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] border border-transparent scale-105' : 'glass-panel text-slate-300 hover:bg-slate-800/60'}`}>View Feedback</button>
                 <button onClick={() => navigate('/admin-dashboard/stats')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all glass-panel text-neo-accent hover:bg-slate-800/60 border-neo-accent/30`}>Allergy Risk Stats (PDF)</button>
+                <Button
+                    onClick={handleGenerateAiMenu}
+                    disabled={aiMenuLoading}
+                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-neo-primary text-white font-bold text-sm ml-auto shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                >
+                    {aiMenuLoading ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                        <Sparkles size={16} />
+                    )}
+                    {aiMenuLoading ? 'Generating...' : '✨ AI Generate 7-Day Menu'}
+                </Button>
             </div>
+
+            {view === 'menu' && aiGeneratedMenus && aiGeneratedMenus.length > 0 && (
+                <div className="mb-8 animate-in">
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-slate-900 border border-emerald-500/30 relative overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.1)] mb-4">
+                        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 blur-[60px] rounded-full pointer-events-none"></div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-emerald-400 flex items-center gap-2 text-lg">
+                                <Sparkles size={20} /> AI Generated 7-Day Menu
+                            </h3>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={handleSaveAllAiMenus}
+                                    className="bg-gradient-to-r from-emerald-600 to-neo-primary text-white font-bold text-sm"
+                                >
+                                    Save All 7 Days
+                                </Button>
+                                <button onClick={() => setAiGeneratedMenus(null)} className="text-slate-500 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+                            </div>
+                        </div>
+                        <p className="text-slate-400 text-sm mb-5">Review each day below. Click <strong className="text-emerald-400">"Save Day"</strong> to add individual days, or <strong className="text-emerald-400">"Save All"</strong> to add the full week instantly.</p>
+                        <div className="space-y-4">
+                            {aiGeneratedMenus.map((dayMenu, idx) => (
+                                <div key={idx} className="bg-slate-800/60 rounded-xl border border-slate-700/60 overflow-hidden">
+                                    <div className="flex justify-between items-center px-5 py-3 border-b border-slate-700/50 bg-slate-800/80">
+                                        <div>
+                                            <span className="font-bold text-white">
+                                                {new Date(dayMenu.day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                                            </span>
+                                            <span className="ml-2 text-xs text-slate-400">{dayMenu.day}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleSaveAiDay(dayMenu, idx)}
+                                            disabled={savingDayIdx === idx}
+                                            className="flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-bold transition-colors disabled:opacity-50"
+                                        >
+                                            {savingDayIdx === idx ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : null}
+                                            Save Day
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-slate-700/50">
+                                        {['breakfast', 'lunch', 'snacks', 'dinner'].map(meal => (
+                                            <div key={meal} className="p-4">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{meal === 'snacks' ? '☕ Snacks' : meal === 'breakfast' ? '🌅 Breakfast' : meal === 'lunch' ? '☀️ Lunch' : '🌙 Dinner'}</p>
+                                                <ul className="space-y-1">
+                                                    {(dayMenu[meal] || []).map((dish, di) => (
+                                                        <li key={di} className="text-xs text-slate-200 font-medium">{dish.name}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {view === 'menu' && (
                 <div className="grid lg:grid-cols-12 gap-8 animate-in mt-4">
