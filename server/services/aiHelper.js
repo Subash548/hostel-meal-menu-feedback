@@ -27,15 +27,8 @@ async function generateWithFallback(prompt) {
             return response.text;
         } catch (err) {
             lastError = err;
-            const status = err?.status || err?.httpStatusCode || err?.code;
-            const msg = err?.message || '';
-            // Only retry on capacity/overload errors (503, 429)
-            if (status === 503 || status === 429 || msg.includes('UNAVAILABLE') || msg.includes('high demand') || msg.includes('overloaded')) {
-                console.warn(`[AI] Model ${model} unavailable, trying next fallback...`);
-                continue;
-            }
-            // For other errors, don't retry — throw immediately
-            throw err;
+            console.warn(`[AI] Model ${model} failed with error: ${err?.message || 'Unknown error'}. Trying next fallback...`);
+            continue;
         }
     }
 
