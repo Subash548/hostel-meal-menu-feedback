@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Menu = require('../models/Menu');
 const { runAllergyCheck } = require('../services/allergyEngine');
+const auth = require('../middleware/authMiddleware');
 const router = express.Router();
 
 // Register Student
@@ -87,8 +88,20 @@ router.post('/login', async (req, res) => {
             } 
         });
     } catch (err) {
-        console.error("Error logging in:", err);
-        res.status(500).json({ error: "Server error during login" });
+        console.error("DEBUG login error:", err);
+        res.status(500).json({ error: "Server error during login", details: err.message });
+    }
+});
+
+// Update Push Token
+router.put('/update-push-token', auth, async (req, res) => {
+    try {
+        const { token } = req.body;
+        await User.findByIdAndUpdate(req.user.id, { pushToken: token });
+        res.json({ message: "Push token updated" });
+    } catch (err) {
+        console.error("Error updating push token:", err);
+        res.status(500).json({ error: "Server error" });
     }
 });
 

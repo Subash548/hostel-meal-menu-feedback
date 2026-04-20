@@ -1,20 +1,28 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+
+// Cache the connection
+let isConnected = false;
 
 const connectDB = async () => {
-    try {
-        let mongoURI = process.env.MONGODB_URI;
-        
-        if (!mongoURI) {
-            console.log("No MONGODB_URI found, starting local in-memory database...");
-            const mongoServer = await MongoMemoryServer.create();
-            mongoURI = mongoServer.getUri();
-        }
+    if (isConnected) {
+        return mongoose.connection;
+    }
 
-        await mongoose.connect(mongoURI);
-        console.log("Connected to MongoDB at " + mongoURI);
+    try {
+        const mongoURI = process.env.MONGODB_URI;
+        if (!mongoURI) {
+            throw new Error("MONGODB_URI environment variable is missing!");
+        }
+        
+        console.log("Connecting to MongoDB...");
+        await mongoose.connect(mongoURI, {
+            serverSelectionTimeoutMS: 15000, 
+        });
+        
+        isConnected = true;
+        console.log("Connected to MongoDB successfully");
 
         // Seed Admin User
         const adminEmail = "admin@hostel.com";
@@ -87,7 +95,9 @@ const connectDB = async () => {
             ];
 
             const today = new Date();
-            for (let i = 0; i < 7; i++) {
+            today.setHours(0, 0, 0, 0);
+            
+            for (let i = 0; i < 30; i++) {
                 const d = new Date(today);
                 d.setDate(today.getDate() + i);
                 
@@ -107,18 +117,23 @@ const connectDB = async () => {
                     snacks: dailyMenu.snacks,
                     dinner: dailyMenu.dinner
                 });
-                // Run allergy engine for each seeded menu so alerts are generated on startup
+                // Run allergy engine for each seeded menu
                 await runAllergyCheck(createdMenu);
             }
-            console.log("Menu data seeded perfectly with dynamic day-to-day variations.");
+            console.log("Menu data seeded.");
         }
 
+        return mongoose.connection;
     } catch (err) {
         console.error("Error connecting to MongoDB:", err.message);
-        process.exit(1);
+        throw err;
     }
 };
 
-connectDB();
+// Initial connection attempt
+connectDB().catch(err => {
+    console.error("Initial DB connection failed");
+});
 
-module.exports = mongoose.connection;
+module.exports = { connectDB, connection: mongoose.connection };
+

@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema({
     push: { type: Boolean, default: false },
     email: { type: Boolean, default: false },
     sms: { type: Boolean, default: false }
-  }
+  },
+  pushToken: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
