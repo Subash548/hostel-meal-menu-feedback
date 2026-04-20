@@ -4,6 +4,7 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { Utensils } from 'lucide-react';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Preferences } from '@capacitor/preferences';
 
 const Login = () => {
     const location = useLocation();
@@ -13,9 +14,31 @@ const Login = () => {
     const [loginType, setLoginType] = useState(initialType);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
+
+    // Auto-load saved credentials on mount
+    React.useEffect(() => {
+        const loadCredentials = async () => {
+            try {
+                const { value } = await Preferences.get({ key: 'hostel_credentials' });
+                if (value) {
+                    const saved = JSON.parse(value);
+                    if (saved.email && saved.password) {
+                        setEmail(saved.email);
+                        setPassword(saved.password);
+                        setLoginType(saved.loginType || initialType);
+                        setRememberMe(true);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load preferences:', e);
+            }
+        };
+        loadCredentials();
+    }, [initialType]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -27,6 +50,16 @@ const Login = () => {
             if (res.data.user.role !== loginType) {
                 setError(`Account found, but it is not a ${loginType} account. Please use the correct login type.`);
                 return;
+            }
+
+            // Save or remove credentials securely on the device
+            if (rememberMe) {
+                await Preferences.set({
+                    key: 'hostel_credentials',
+                    value: JSON.stringify({ email, password, loginType })
+                });
+            } else {
+                await Preferences.remove({ key: 'hostel_credentials' });
             }
 
             login(res.data.token, res.data.user);
@@ -127,6 +160,20 @@ const Login = () => {
                                 required
                             />
                         </div>
+                        
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="remember-me"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                className="w-4 h-4 rounded-md border-slate-600 bg-slate-800 text-neo-primary focus:ring-neo-primary/30"
+                            />
+                            <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-400">
+                                Remember my credentials on this device
+                            </label>
+                        </div>
+                        
                         <button
                             type="submit"
                             className={`w-full text-white font-bold py-4 rounded-xl hover:opacity-90 box-glow transition-all text-lg shadow-lg mt-2 ${loginType === 'admin'

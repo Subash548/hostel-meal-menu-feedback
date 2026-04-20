@@ -3,7 +3,7 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
-import { LogOut, Plus, Trash2, PieChart, Star, Settings, Home as HomeIcon, AlertTriangle, Sparkles, Wand2 } from 'lucide-react';
+import { LogOut, Plus, Trash2, PieChart, Star, Settings, Home as HomeIcon, AlertTriangle, Sparkles, Wand2, Copy, Check } from 'lucide-react';
 
 const ALLERGY_OPTIONS = ['Nuts', 'Gluten', 'Dairy', 'Egg', 'Soy', 'Seafood', 'Spices', 'Sulfites'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'snacks', 'dinner'];
@@ -118,6 +118,18 @@ const AdminDashboard = () => {
             setAiSummary(`Error: ${err.response?.data?.error || err.message}`);
         } finally {
             setAiLoading(false);
+        }
+    };
+
+    const [copiedSummary, setCopiedSummary] = useState(false);
+    const handleCopySummary = async () => {
+        if (!aiSummary) return;
+        try {
+            await navigator.clipboard.writeText(aiSummary);
+            setCopiedSummary(true);
+            setTimeout(() => setCopiedSummary(false), 2000);
+        } catch (ex) {
+            console.error('Failed to copy', ex);
         }
     };
 
@@ -537,10 +549,19 @@ const AdminDashboard = () => {
                     {aiSummary && (
                         <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-purple-900/40 to-slate-900 border border-purple-500/30 relative overflow-hidden shadow-[0_0_30px_rgba(168,85,247,0.1)]">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-[50px] rounded-full pointer-events-none"></div>
-                            <h3 className="font-bold text-purple-400 mb-3 flex items-center gap-2">
-                                <Sparkles size={18} /> AI Insight Summary
-                            </h3>
-                            <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+                            <div className="flex justify-between items-center mb-3 relative z-10">
+                                <h3 className="font-bold text-purple-400 flex items-center gap-2">
+                                    <Sparkles size={18} /> AI Insight Summary
+                                </h3>
+                                <button
+                                    onClick={handleCopySummary}
+                                    className="flex items-center gap-1.5 text-xs bg-purple-500/20 text-purple-300 hover:text-white hover:bg-purple-500/40 px-3 py-1.5 rounded-lg transition-colors font-bold"
+                                >
+                                    {copiedSummary ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                                    {copiedSummary ? 'Copied' : 'Copy'}
+                                </button>
+                            </div>
+                            <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap relative z-10">{aiSummary}</p>
                         </div>
                     )}
 
