@@ -102,17 +102,12 @@ router.post('/ai-detect-dish', auth, async (req, res) => {
     try {
         if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
 
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(400).json({ error: "GEMINI_API_KEY is not configured." });
-        }
-
         const { dishName } = req.body;
         if (!dishName || dishName.trim().length < 2) {
             return res.status(400).json({ error: "Please provide a valid dish name." });
         }
 
-        const { GoogleGenAI } = require('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const { generateWithFallback } = require('../services/aiHelper');
 
         const prompt = `You are an expert Indian food nutritionist. For the dish "${dishName.trim()}", provide:
 1. A list of the main common ingredients (4-8 ingredients)
@@ -123,13 +118,8 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 
 If you don't recognize the dish, return: {"ingredients": [], "allergenTags": [], "unknown": true}`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-
-        let rawText = response.text.trim();
-        rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+        let rawText = await generateWithFallback(prompt);
+        rawText = rawText.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
         let result;
         try {
@@ -150,14 +140,7 @@ router.post('/ai-generate', auth, async (req, res) => {
     try {
         if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
 
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(400).json({ error: "GEMINI_API_KEY is not configured on the server." });
-        }
-
         // Fetch last 14 days of menus to understand what was recently served
-        const twoWeeksAgo = new Date();
-        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
         const recentMenus = await Menu.find({}).sort({ date: -1 }).limit(14);
 
         // Format past menus for context
@@ -182,8 +165,7 @@ router.post('/ai-generate', auth, async (req, res) => {
             });
         }
 
-        const { GoogleGenAI } = require('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const { generateWithFallback } = require('../services/aiHelper');
 
         const prompt = `You are an expert hostel mess nutritionist and menu planner for a student hostel in India.
 
@@ -215,15 +197,9 @@ Return ONLY a valid JSON array (no markdown, no explanation), in this EXACT form
 The dates must match exactly: ${next7Days.map(d => `"${d.dateString}"`).join(', ')}
 Return nothing except the JSON array.`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-
+        let rawText = await generateWithFallback(prompt);
         // Clean and parse the JSON
-        let rawText = response.text.trim();
-        // Strip markdown code blocks if present
-        rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+        rawText = rawText.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
         let generatedMenus;
         try {

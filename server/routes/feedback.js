@@ -57,10 +57,6 @@ router.get('/', auth, async (req, res) => {
 router.get('/ai-summary', auth, async (req, res) => {
     try {
         if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
-        
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(400).json({ error: "GEMINI_API_KEY is not configured on the server." });
-        }
 
         // Get the latest 50 feedback items
         const feedbacks = await Feedback.find()
@@ -77,8 +73,7 @@ router.get('/ai-summary', auth, async (req, res) => {
             `[${f.date}] ${f.meal_type} - Rating: ${f.rating}/5 - Comment: "${f.comment || 'No comment'}"`
         ).join('\n');
 
-        const { GoogleGenAI } = require('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const { generateWithFallback } = require('../services/aiHelper');
         
         const prompt = `You are an expert culinary analyst and hostel administrator. Analyze the following recent student feedback for the hostel mess meals.
         
@@ -93,12 +88,9 @@ router.get('/ai-summary', auth, async (req, res) => {
         
         Keep it under 150 words. Do not use markdown bolding in the plain text if not necessary, just return clean readable text.`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
+        const summaryText = await generateWithFallback(prompt);
 
-        res.json({ summary: response.text });
+        res.json({ summary: summaryText });
     } catch (err) {
         console.error("Error generating AI summary:", err);
         res.status(500).json({ error: "AI generation failed: " + err.message });
